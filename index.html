@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orga Nouvel An - 1er Janvier 2027</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #0f172a; --card: #1e293b; --text: #f8fafc;
+            --boy: #3b82f6; --girl: #ec4899;
+            --c-orga: #38bdf8; --c-present: #22c55e; --c-paye: #a855f7;
+            --c-passur: #ef4444; --c-desist: #eab308; --c-attente: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding: 20px; max-width: 1300px; margin: auto; }
+        h1 { text-align: center; margin-bottom: 6px; font-size: 1.8rem; }
+        
+        .cloud-bar { background: #1e293b; border: 1px solid #334155; padding: 10px 15px; border-radius: 10px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+        .sync-badge { font-size: 0.9rem; font-weight: 600; color: #22c55e; }
+        
+        .top-grid, .lists-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
+        @media (max-width: 850px) { .top-grid, .lists-grid { grid-template-columns: 1fr; } }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        
+        .chart-box { position: relative; width: 240px; height: 240px; margin: 10px auto; display: flex; align-items: center; justify-content: center; }
+        #fallback-pie { width: 220px; height: 220px; border-radius: 50%; display: none; box-shadow: 0 0 15px rgba(0,0,0,0.4); }
+        
+        .stats-bar { display: flex; justify-content: space-around; margin-top: 15px; padding-top: 15px; border-top: 1px solid #334155; }
+        .stat-item { text-align: center; }
+        .stat-val { font-size: 1.6rem; font-weight: bold; }
+        .stat-lbl { font-size: 0.85rem; color: #94a3b8; }
+        
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 5px; font-size: 0.88rem; color: #cbd5e1; }
+        input, select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 0.95rem; }
+        button { cursor: pointer; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 600; transition: 0.2s; }
+        .btn-primary { background: #3b82f6; color: white; width: 100%; font-size: 1rem; margin-top: 5px; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-sec { background: #334155; color: #e2e8f0; font-size: 0.8rem; padding: 6px 10px; }
+        .btn-sec:hover { background: #475569; }
+        
+        .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; justify-content: center; }
+        .badge { padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; }
+        .b-orga { background: rgba(56, 189, 248, 0.15); color: var(--c-orga); border: 1px solid var(--c-orga); }
+        .b-present { background: rgba(34, 197, 94, 0.15); color: var(--c-present); border: 1px solid var(--c-present); }
+        .b-paye { background: rgba(168, 85, 247, 0.2); color: #d8b4fe; border: 1px solid var(--c-paye); }
+        .b-passur { background: rgba(239, 68, 68, 0.15); color: var(--c-passur); border: 1px solid var(--c-passur); }
+        .b-desist { background: rgba(234, 179, 8, 0.15); color: var(--c-desist); border: 1px solid var(--c-desist); }
+        .b-attente { background: rgba(148, 163, 184, 0.1); color: var(--c-attente); border: 1px solid #475569; }
+        
+        .filter-bar { display: flex; gap: 15px; align-items: center; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; background: var(--card); padding: 12px; border-radius: 10px; }
+        .filter-bar label { margin: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.85rem; }
+        .filter-bar input[type="checkbox"] { width: auto; }
+        
+        .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #334155; }
+        .person-list { list-style: none; max-height: 550px; overflow-y: auto; padding-right: 5px; }
+        .person-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; margin-bottom: 6px; background: #0f172a; border-radius: 8px; border-left: 4px solid transparent; gap: 8px; }
+        .person-item.st-orga { border-left-color: var(--c-orga); }
+        .person-item.st-present { border-left-color: var(--c-present); }
+        .person-item.st-paye { border-left-color: var(--c-paye); background: rgba(168, 85, 247, 0.1); }
+        .person-item.st-passur { border-left-color: var(--c-passur); }
+        .person-item.st-desist { border-left-color: var(--c-desist); opacity: 0.6; }
+        .person-item.st-attente { border-left-color: #475569; }
+        .p-info { display: flex; flex-direction: column; flex: 1; }
+        .p-name { font-weight: 600; font-size: 0.95rem; }
+        .p-note { font-size: 0.78rem; color: #94a3b8; }
+        .p-actions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+        .p-actions select { padding: 4px 6px; font-size: 0.75rem; width: auto; }
+        .btn-del { background: transparent; color: #ef4444; padding: 4px 6px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <h1>🎉 Soirée du Nouvel An — 1er Janvier 2027</h1>
+
+    <div class="cloud-bar">
+        <div class="sync-badge" id="sync-status">⚡ Connexion au Cloud en cours...</div>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn-sec" onclick="initData()">🔄 Actualiser maintenant</button>
+            <button class="btn-sec" onclick="resetToDefault()">⚠️ Réinitialiser liste PDF</button>
+        </div>
+    </div>
+
+    <div class="legend">
+        <span class="badge b-orga">Bleu : Orga / Staff</span>
+        <span class="badge b-present">Vert : Client présent</span>
+        <span class="badge b-paye">Violet : A payé</span>
+        <span class="badge b-attente">Noir/Gris : En attente / À contacter</span>
+        <span class="badge b-passur">Rouge : Pas sûr de venir</span>
+        <span class="badge b-desist">Jaune : Désistement</span>
+    </div>
+
+    <div class="filter-bar">
+        <strong>Inclure dans le camembert :</strong>
+        <label><input type="checkbox" class="st-filter" value="orga" checked> Orga</label>
+        <label><input type="checkbox" class="st-filter" value="present" checked> Présents</label>
+        <label><input type="checkbox" class="st-filter" value="paye" checked> Payés</label>
+        <label><input type="checkbox" class="st-filter" value="attente" checked> En attente</label>
+        <label><input type="checkbox" class="st-filter" value="passur" checked> Pas sûrs</label>
+        <label><input type="checkbox" class="st-filter" value="desist"> Désistements</label>
+    </div>
+
+    <div class="top-grid">
+        <div class="card">
+            <div class="chart-box">
+                <canvas id="genderChart"></canvas>
+                <div id="fallback-pie"></div>
+            </div>
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-val" id="count-boys" style="color: var(--boy);">0</div>
+                    <div class="stat-lbl">Garçons (<span id="pct-boys">0</span>%)</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-val" id="count-total">0</div>
+                    <div class="stat-lbl">Total compté</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-val" id="count-girls" style="color: var(--girl);">0</div>
+                    <div class="stat-lbl">Filles (<span id="pct-girls">0</span>%)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom: 12px;">➕ Ajouter une ou plusieurs personnes</h3>
+            <div class="form-group">
+                <label>Nom / Prénom(s) — <em>sépare par une virgule pour en mettre plusieurs !</em></label>
+                <input type="text" id="inp-names" placeholder="Ex: Lucas, Maxime, Thomas">
+            </div>
+            <div class="form-group">
+                <label>Catégorie</label>
+                <select id="inp-gender">
+                    <option value="M">Garçon ♂️</option>
+                    <option value="F">Fille ♀️</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Statut (Code couleur)</label>
+                <select id="inp-status">
+                    <option value="present">Client présent (Vert)</option>
+                    <option value="attente" selected>En attente / Info (Noir)</option>
+                    <option value="paye">A payé (Violet)</option>
+                    <option value="passur">Pas sûr de venir (Rouge)</option>
+                    <option value="orga">Orga / Staff (Bleu)</option>
+                    <option value="desist">Désistement (Jaune)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>D'où il/elle vient & infos (Pote de qui ?)</label>
+                <input type="text" id="inp-note" placeholder="Ex: pote de Benoit / envoyer mess">
+            </div>
+            <button class="btn-primary" onclick="addPeople()">Ajouter au camembert & à la liste</button>
+        </div>
+    </div>
+
+    <div class="lists-grid">
+        <div class="card">
+            <div class="list-header" style="border-color: var(--boy);">
+                <h3>♂️ Liste Garçons (<span id="list-count-boys">0</span>)</h3>
+                <input type="text" id="search-boys" placeholder="Rechercher..." style="width: 150px; padding: 5px 8px;" oninput="renderLists()">
+            </div>
+            <ul class="person-list" id="ul-boys"></ul>
+        </div>
+
+        <div class="card">
+            <div class="list-header" style="border-color: var(--girl);">
+                <h3>♀️ Liste Filles (<span id="list-count-girls">0</span>)</h3>
+                <input type="text" id="search-girls" placeholder="Rechercher..." style="width: 150px; padding: 5px 8px;" oninput="renderLists()">
+            </div>
+            <ul class="person-list" id="ul-girls"></ul>
+        </div>
+    </div>
+
+<script>
+// Ton lien Firebase directement intégré :
+const DB_URL = "https://orga-nouvel-an-default-rtdb.europe-west1.firebasedatabase.app/guests.json";
+
+const initialGuests = [
+    { name: "Alexandre", gender: "M", status: "orga", note: "Orga #1" },
+    { name: "Benoit", gender: "M", status: "orga", note: "Orga #2 (+4 potes prévus)" },
+    { name: "Guillaume", gender: "M", status: "orga", note: "Orga #3" },
+    { name: "Matéo", gender: "M", status: "orga", note: "Orga #4" },
+    { name: "Ezio", gender: "M", status: "orga", note: "Orga #5 (+1 pote prévu)" },
+    { name: "Valentin", gender: "M", status: "orga", note: "Orga #6 (+4 potes prévus)" },
+    { name: "Auxence", gender: "M", status: "passur", note: "pas sûr" },
+    { name: "Diane", gender: "F", status: "passur", note: "pas sûr" },
+    { name: "Lisa", gender: "F", status: "attente", note: "" },
+    { name: "Ninon", gender: "F", status: "present", note: "présente" },
+    { name: "Marame", gender: "F", status: "passur", note: "pas sûr" },
+    { name: "Lilian", gender: "M", status: "attente", note: "envoyer mess - Val" },
+    { name: "Guillaume muller", gender: "M", status: "attente", note: "" },
+    { name: "Margot R", gender: "F", status: "attente", note: "" },
+    { name: "Lucie Alter", gender: "F", status: "attente", note: "envoyer un mess - Val" },
+    { name: "Lucie Hartz", gender: "F", status: "attente", note: "" },
+    { name: "Lina", gender: "F", status: "present", note: "présente" },
+    { name: "Mika", gender: "M", status: "present", note: "présent" },
+    { name: "Sara Alves", gender: "F", status: "present", note: "présente" },
+    { name: "Manu", gender: "M", status: "present", note: "présent" },
+    { name: "Ashvan", gender: "M", status: "attente", note: "" },
+    { name: "Naomi", gender: "F", status: "present", note: "présente" },
+    { name: "Solene", gender: "F", status: "present", note: "présente" },
+    { name: "Oreo", gender: "M", status: "passur", note: "pas sûr 😊" },
+    { name: "Roulios", gender: "M", status: "passur", note: "pas sûr" },
+    { name: "Balta", gender: "M", status: "passur", note: "pas sûr" },
+    { name: "Loick", gender: "M", status: "present", note: "présent" },
+    { name: "Emma Wey", gender: "F", status: "attente", note: "" },
+    { name: "Nawfel", gender: "M", status: "attente", note: "envoyer un mess - Val" },
+    { name: "Alek", gender: "M", status: "attente", note: "" },
+    { name: "Timéo", gender: "M", status: "present", note: "présent" },
+    { name: "Tom CARADONA", gender: "M", status: "attente", note: "ajt grp + envoyer mess - Ezio" },
+    { name: "Aubin", gender: "M", status: "attente", note: "" },
+    { name: "Lilou", gender: "F", status: "attente", note: "" },
+    { name: "Mila", gender: "F", status: "attente", note: "meuf à Timéo" },
+    { name: "Kenzo", gender: "M", status: "attente", note: "envoyer un mess - Val" },
+    { name: "Evan", gender: "M", status: "attente", note: "pote de Benoit (envoyer mess)" },
+    { name: "Mandy", gender: "F", status: "attente", note: "envoyer un mess - Gui" },
+    { name: "Raph", gender: "M", status: "attente", note: "envoyer un mess - Gui" },
+    { name: "Jan", gender: "M", status: "attente", note: "pote de Ezio (ajt grp + mess)" },
+    { name: "Ilena Stachowiak", gender: "F", status: "attente", note: "meuf Léon (envoyer mess - Alex)" },
+    { name: "Léane", gender: "F", status: "attente", note: "pote de Benoit (ajt grp + mess)" },
+    { name: "Anna", gender: "F", status: "attente", note: "pote de Alex (envoyer mess)" },
+    { name: "Clara", gender: "F", status: "attente", note: "pote de Benoit (envoyer mess)" },
+    { name: "Amandine", gender: "F", status: "attente", note: "" },
+    { name: "Alban", gender: "M", status: "passur", note: "pas sûr" },
+    { name: "Mona", gender: "F", status: "attente", note: "envoyer mess - Alex ou Benoit" },
+    { name: "Orane de lingo", gender: "F", status: "passur", note: "pote de Val (pas sûr)" },
+    { name: "Leona (john dear)", gender: "F", status: "attente", note: "envoyer mess - Alex ou Benoit" },
+    { name: "Kiki mexique", gender: "M", status: "passur", note: "pote de Val (pas sûr)" },
+    { name: "Ewen mexique", gender: "M", status: "passur", note: "pote de Val (pas sûr)" },
+    { name: "Léon", gender: "M", status: "attente", note: "pote de Alex (envoyer mess)" },
+    { name: "Laly", gender: "F", status: "present", note: "présente" },
+    { name: "Zoe", gender: "F", status: "attente", note: "ajt grp + renvoyer mess" },
+    { name: "Naya", gender: "F", status: "present", note: "présente" },
+    { name: "Valentin mexique", gender: "M", status: "passur", note: "pas sûr" },
+    { name: "Charles", gender: "M", status: "attente", note: "pote Alex (add grp + mess)" },
+    { name: "Ayanna", gender: "F", status: "attente", note: "meuf de Balta (ajt grp + mess Val)" },
+    { name: "Faustine", gender: "F", status: "attente", note: "envoyer un mess - Val" },
+    { name: "Jo Hakim", gender: "M", status: "attente", note: "envoyer mess prv - Val" },
+    { name: "Lauren", gender: "F", status: "attente", note: "envoyer un mess - Val" },
+    { name: "Romain", gender: "M", status: "passur", note: "frère d'Alex (pas sûr)" },
+    { name: "Taylan", gender: "M", status: "attente", note: "envoyer mess - Ezio/Matéo/Gui" },
+    { name: "Stéphane", gender: "M", status: "passur", note: "pas sûr" },
+    { name: "Benjamin", gender: "M", status: "attente", note: "invité de Ash (Pour ou contre ??)" },
+    { name: "Brady", gender: "M", status: "attente", note: "invité de Alek (Pour ou contre ??)" },
+    { name: "Marius", gender: "M", status: "attente", note: "Pour ou contre ??" },
+    { name: "Invité DJ #1", gender: "M", status: "attente", note: "ajt grp" },
+    { name: "Invité DJ #2", gender: "F", status: "attente", note: "ajt grp" },
+    { name: "Hugo DJ", gender: "M", status: "present", note: "Prestataire" },
+    { name: "Elyes", gender: "M", status: "desist", note: "Désistement" },
+    { name: "Gaetan", gender: "M", status: "desist", note: "Désistement" },
+    { name: "Le rat mort", gender: "M", status: "desist", note: "Désistement" }
+];
+
+let guests = [...initialGuests];
+let chartInstance = null;
+let isSaving = false;
+
+async function initData() {
+    if (isSaving) return;
+    const badge = document.getElementById('sync-status');
+    try {
+        const res = await fetch(DB_URL);
+        if (!res.ok) throw new Error("Accès refusé ou hors ligne");
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+            guests = data;
+        } else {
+            await saveData();
+        }
+        badge.textContent = '🟢 Synchronisé en direct (Partagé avec toute l\'Orga)';
+        badge.style.color = '#22c55e';
+    } catch (e) {
+        badge.textContent = '🟠 Mode hors-ligne / Aperçu VS Code (Ouvre dans ton navigateur ou sur GitHub)';
+        badge.style.color = '#eab308';
+    }
+    render();
+}
+
+async function saveData() {
+    isSaving = true;
+    const badge = document.getElementById('sync-status');
+    badge.textContent = '⏳ Sauvegarde en cours...';
+    render();
+    try {
+        await fetch(DB_URL, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(guests)
+        });
+        badge.textContent = '🟢 Synchronisé en direct (Partagé avec toute l\'Orga)';
+        badge.style.color = '#22c55e';
+    } catch (e) {
+        badge.textContent = '🔴 Erreur de sauvegarde (Vérifie ta connexion ou les règles Firebase)';
+        badge.style.color = '#ef4444';
+    }
+    isSaving = false;
+}
+
+function render() {
+    const activeStatuses = Array.from(document.querySelectorAll('.st-filter:checked')).map(cb => cb.value);
+    const filtered = guests.filter(g => activeStatuses.includes(g.status));
+    const boys = filtered.filter(g => g.gender === 'M').length;
+    const girls = filtered.filter(g => g.gender === 'F').length;
+    const total = boys + girls;
+
+    const pctB = total > 0 ? Math.round((boys / total) * 100) : 0;
+    const pctG = total > 0 ? 100 - pctB : 0;
+
+    document.getElementById('count-boys').textContent = boys;
+    document.getElementById('count-girls').textContent = girls;
+    document.getElementById('count-total').textContent = total;
+    document.getElementById('pct-boys').textContent = pctB;
+    document.getElementById('pct-girls').textContent = pctG;
+
+    updateChart(boys, girls, pctB);
+    renderLists();
+}
+
+function updateChart(boys, girls, pctB) {
+    if (typeof Chart !== 'undefined') {
+        const ctx = document.getElementById('genderChart').getContext('2d');
+        if (chartInstance) {
+            chartInstance.data.datasets[0].data = [boys, girls];
+            chartInstance.update();
+            return;
+        }
+        chartInstance = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Garçons ♂️', 'Filles ♀️'],
+                datasets: [{ data: [boys, girls], backgroundColor: ['#3b82f6', '#ec4899'], borderColor: '#1e293b', borderWidth: 3 }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'bottom', labels: { color: '#f8fafc' } } }
+            }
+        });
+    } else {
+        document.getElementById('genderChart').style.display = 'none';
+        const fb = document.getElementById('fallback-pie');
+        fb.style.display = 'block';
+        fb.style.background = `conic-gradient(#3b82f6 0% ${pctB}%, #ec4899 ${pctB}% 100%)`;
+    }
+}
+
+function renderLists() {
+    const searchB = document.getElementById('search-boys').value.toLowerCase();
+    const searchG = document.getElementById('search-girls').value.toLowerCase();
+    const ulBoys = document.getElementById('ul-boys');
+    const ulGirls = document.getElementById('ul-girls');
+    ulBoys.innerHTML = ''; ulGirls.innerHTML = '';
+    let totalB = 0, totalG = 0;
+
+    guests.forEach((g, idx) => {
+        if (g.gender === 'M') totalB++; else totalG++;
+        const s = g.gender === 'M' ? searchB : searchG;
+        if (s && !g.name.toLowerCase().includes(s) && !(g.note && g.note.toLowerCase().includes(s))) return;
+
+        const li = document.createElement('li');
+        li.className = `person-item st-${g.status}`;
+        li.innerHTML = `
+            <div class="p-info">
+                <span class="p-name">${g.name}</span>
+                ${g.note ? `<span class="p-note">(${g.note})</span>` : ''}
+            </div>
+            <div class="p-actions">
+                <select onchange="changeStatus(${idx}, this.value)">
+                    <option value="orga" ${g.status==='orga'?'selected':''}>🔵 Orga</option>
+                    <option value="present" ${g.status==='present'?'selected':''}>🟢 Présent</option>
+                    <option value="paye" ${g.status==='paye'?'selected':''}>🟣 Payé</option>
+                    <option value="attente" ${g.status==='attente'?'selected':''}>⚫ Attente</option>
+                    <option value="passur" ${g.status==='passur'?'selected':''}>🔴 Pas sûr</option>
+                    <option value="desist" ${g.status==='desist'?'selected':''}>🟡 Désist.</option>
+                </select>
+                <button class="btn-sec" title="Modifier prénom/info" onclick="editPerson(${idx})">✏️</button>
+                <button class="btn-sec" title="Changer Fille/Garçon" onclick="toggleGender(${idx})">${g.gender==='M'?'♂️':'♀️'}</button>
+                <button class="btn-del" title="Supprimer" onclick="deletePerson(${idx})">✖</button>
+            </div>
+        `;
+        if (g.gender === 'M') ulBoys.appendChild(li); else ulGirls.appendChild(li);
+    });
+    document.getElementById('list-count-boys').textContent = totalB;
+    document.getElementById('list-count-girls').textContent = totalG;
+}
+
+function addPeople() {
+    const rawNames = document.getElementById('inp-names').value;
+    const gender = document.getElementById('inp-gender').value;
+    const status = document.getElementById('inp-status').value;
+    const note = document.getElementById('inp-note').value.trim();
+
+    const names = rawNames.split(',').map(n => n.trim()).filter(n => n.length > 0);
+    if (names.length === 0) return;
+
+    names.forEach(name => guests.unshift({ name, gender, status, note }));
+    document.getElementById('inp-names').value = '';
+    document.getElementById('inp-note').value = '';
+    saveData();
+}
+
+function editPerson(idx) {
+    const p = guests[idx];
+    const newName = prompt("Modifier le nom / prénom :", p.name);
+    if (newName === null) return;
+    const newNote = prompt("Modifier l'info (pote de qui, message, etc.) :", p.note || "");
+    if (newName.trim() !== "") p.name = newName.trim();
+    if (newNote !== null) p.note = newNote.trim();
+    saveData();
+}
+
+function changeStatus(idx, st) { guests[idx].status = st; saveData(); }
+function toggleGender(idx) { guests[idx].gender = guests[idx].gender === 'M' ? 'F' : 'M'; saveData(); }
+function deletePerson(idx) {
+    if (confirm(`Supprimer ${guests[idx].name} de la liste ?`)) {
+        guests.splice(idx, 1);
+        saveData();
+    }
+}
+function resetToDefault() {
+    if (confirm("Attention : Réinitialiser toute la liste avec les personnes d'origine du PDF ?")) {
+        guests = [...initialGuests];
+        saveData();
+    }
+}
+
+document.querySelectorAll('.st-filter').forEach(cb => cb.addEventListener('change', render));
+initData();
+// Synchronisation automatique en arrière-plan toutes les 4 secondes
+setInterval(initData, 4000);
+</script>
+</body>
+</html>
