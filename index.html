@@ -16,6 +16,14 @@
         body { background-color: var(--bg); color: var(--text); padding: 20px; max-width: 1300px; margin: auto; }
         h1 { text-align: center; margin-bottom: 6px; font-size: 1.8rem; }
         
+        /* Écran de connexion sécurisé */
+        #login-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 20px; }
+        .login-card { background: var(--card); padding: 30px; border-radius: 12px; width: 100%; max-width: 380px; box-shadow: 0 4px 25px rgba(0,0,0,0.6); text-align: center; border: 1px solid #334155; }
+        .login-card h2 { margin-bottom: 10px; font-size: 1.4rem; }
+        .login-card p { color: #94a3b8; font-size: 0.88rem; margin-bottom: 20px; }
+        .login-card input { margin-bottom: 12px; text-align: center; }
+        .error-msg { color: #ef4444; font-size: 0.85rem; margin-top: 12px; display: none; font-weight: 600; }
+
         .cloud-bar { background: #1e293b; border: 1px solid #334155; padding: 10px 15px; border-radius: 10px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
         .sync-badge { font-size: 0.9rem; font-weight: 600; color: #22c55e; }
         
@@ -72,13 +80,26 @@
 </head>
 <body>
 
+    <!-- Écran de Connexion -->
+    <div id="login-overlay">
+        <div class="login-card">
+            <h2>🔒 Accès Orga</h2>
+            <p>Connecte-toi pour voir et modifier la liste du Nouvel An :</p>
+            <input type="text" id="login-user" placeholder="Identifiant" onkeydown="if(event.key === 'Enter') checkAuth()">
+            <input type="password" id="login-pass" placeholder="Mot de passe" onkeydown="if(event.key === 'Enter') checkAuth()">
+            <button class="btn-primary" onclick="checkAuth()">Se connecter</button>
+            <div class="error-msg" id="error-msg">❌ Identifiant ou mot de passe incorrect</div>
+        </div>
+    </div>
+
     <h1>🎉 Soirée du Nouvel An — 1er Janvier 2027</h1>
 
     <div class="cloud-bar">
-        <div class="sync-badge" id="sync-status">⚡ Connexion au Cloud en cours...</div>
+        <div class="sync-badge" id="sync-status">⚡ Connexion au Cloud...</div>
         <div style="display: flex; gap: 8px;">
-            <button class="btn-sec" onclick="initData()">🔄 Actualiser maintenant</button>
-            <button class="btn-sec" onclick="resetToDefault()">⚠️ Réinitialiser liste PDF</button>
+            <button class="btn-sec" onclick="initData()">🔄 Actualiser</button>
+            <button class="btn-sec" onclick="resetToDefault()">⚠️ Réinitialiser PDF</button>
+            <button class="btn-sec" onclick="logout()">🔒 Déconnexion</button>
         </div>
     </div>
 
@@ -174,7 +195,11 @@
     </div>
 
 <script>
-// Ton lien Firebase directement intégré :
+// 👉 IDENTIFIANT ET MOT DE PASSE DE L'ORGA :
+const ORGA_USER = "orga";
+const ORGA_PASS = "nouvelan2027";
+
+// Ton lien Firebase directement branché :
 const DB_URL = "https://orga-nouvel-an-default-rtdb.europe-west1.firebasedatabase.app/guests.json";
 
 const initialGuests = [
@@ -257,22 +282,49 @@ let guests = [...initialGuests];
 let chartInstance = null;
 let isSaving = false;
 
+function checkAuth() {
+    const u = document.getElementById('login-user').value.trim().toLowerCase();
+    const p = document.getElementById('login-pass').value;
+    if (u === ORGA_USER.toLowerCase() && p === ORGA_PASS) {
+        document.getElementById('login-overlay').style.display = 'none';
+        try { localStorage.setItem('orga_auth_ok', 'true'); } catch(e) {}
+        initData();
+    } else {
+        document.getElementById('error-msg').style.display = 'block';
+    }
+}
+
+function logout() {
+    try { localStorage.removeItem('orga_auth_ok'); } catch(e) {}
+    document.getElementById('login-overlay').style.display = 'flex';
+    document.getElementById('login-pass').value = '';
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    try {
+        if (localStorage.getItem('orga_auth_ok') === 'true') {
+            document.getElementById('login-overlay').style.display = 'none';
+            initData();
+        }
+    } catch(e) {}
+});
+
 async function initData() {
     if (isSaving) return;
     const badge = document.getElementById('sync-status');
     try {
         const res = await fetch(DB_URL);
-        if (!res.ok) throw new Error("Accès refusé ou hors ligne");
+        if (!res.ok) throw new Error("Erreur réseau");
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
             guests = data;
         } else {
             await saveData();
         }
-        badge.textContent = '🟢 Synchronisé en direct (Partagé avec toute l\'Orga)';
+        badge.textContent = '🟢 Synchronisé en direct (Partagé avec l\'Orga)';
         badge.style.color = '#22c55e';
     } catch (e) {
-        badge.textContent = '🟠 Mode hors-ligne / Aperçu VS Code (Ouvre dans ton navigateur ou sur GitHub)';
+        badge.textContent = '🟠 Mode local / hors-ligne';
         badge.style.color = '#eab308';
     }
     render();
@@ -289,10 +341,10 @@ async function saveData() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(guests)
         });
-        badge.textContent = '🟢 Synchronisé en direct (Partagé avec toute l\'Orga)';
+        badge.textContent = '🟢 Synchronisé en direct (Partagé avec l\'Orga)';
         badge.style.color = '#22c55e';
     } catch (e) {
-        badge.textContent = '🔴 Erreur de sauvegarde (Vérifie ta connexion ou les règles Firebase)';
+        badge.textContent = '🔴 Erreur de sauvegarde';
         badge.style.color = '#ef4444';
     }
     isSaving = false;
@@ -374,8 +426,8 @@ function renderLists() {
                     <option value="passur" ${g.status==='passur'?'selected':''}>🔴 Pas sûr</option>
                     <option value="desist" ${g.status==='desist'?'selected':''}>🟡 Désist.</option>
                 </select>
-                <button class="btn-sec" title="Modifier prénom/info" onclick="editPerson(${idx})">✏️</button>
-                <button class="btn-sec" title="Changer Fille/Garçon" onclick="toggleGender(${idx})">${g.gender==='M'?'♂️':'♀️'}</button>
+                <button class="btn-sec" title="Modifier" onclick="editPerson(${idx})">✏️</button>
+                <button class="btn-sec" title="Genre" onclick="toggleGender(${idx})">${g.gender==='M'?'♂️':'♀️'}</button>
                 <button class="btn-del" title="Supprimer" onclick="deletePerson(${idx})">✖</button>
             </div>
         `;
@@ -404,7 +456,7 @@ function editPerson(idx) {
     const p = guests[idx];
     const newName = prompt("Modifier le nom / prénom :", p.name);
     if (newName === null) return;
-    const newNote = prompt("Modifier l'info (pote de qui, message, etc.) :", p.note || "");
+    const newNote = prompt("Modifier l'info :", p.note || "");
     if (newName.trim() !== "") p.name = newName.trim();
     if (newNote !== null) p.note = newNote.trim();
     saveData();
@@ -419,16 +471,18 @@ function deletePerson(idx) {
     }
 }
 function resetToDefault() {
-    if (confirm("Attention : Réinitialiser toute la liste avec les personnes d'origine du PDF ?")) {
+    if (confirm("Réinitialiser toute la liste avec les personnes d'origine du PDF ?")) {
         guests = [...initialGuests];
         saveData();
     }
 }
 
 document.querySelectorAll('.st-filter').forEach(cb => cb.addEventListener('change', render));
-initData();
-// Synchronisation automatique en arrière-plan toutes les 4 secondes
-setInterval(initData, 4000);
+setInterval(() => {
+    if (document.getElementById('login-overlay').style.display === 'none') {
+        initData();
+    }
+}, 4000);
 </script>
 </body>
 </html>
